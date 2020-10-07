@@ -48,3 +48,13 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Temporary file
+tmp.csv
+
