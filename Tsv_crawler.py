@@ -10,7 +10,7 @@ import gzip
 import pandas as pd
 
 class Tsv_Crawler(BaseCrawler):
-    def __init__(self,last,di="data/Tsv_data"):
+    def __init__(self,last=-1,di="data/Tsv_data"):
         super().__init__()
         self.di=di
         self.file_name=["name.basics.tsv.gz","title.akas.tsv.gz","title.basics.tsv.gz","title.crew.tsv.gz","title.episode.tsv.gz","title.principals.tsv.gz","title.ratings.tsv.gz"]
@@ -40,7 +40,7 @@ class Tsv_Crawler(BaseCrawler):
     
                   
     def load_Tsv_as_pd(self,file):
-        df=pd.read_table(self.di+"/"+file,index_col=0,nrows=60000)
+        df=pd.read_table(self.di+"/"+file,index_col=0)
         #実行速度上げる用
         return df
     
@@ -65,7 +65,7 @@ class Tsv_Crawler(BaseCrawler):
             self.full_pd.append(self.load_Tsv_as_pd(name))
         
         self.elminate_double()
-        self.split_pd(last)
+        #self.split_pd(last)
 
                 
     def load_title(self):
