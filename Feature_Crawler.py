@@ -49,7 +49,7 @@ def load_image(file_name,option="eng",idi=idi,jidi=jidi):
         print(e,"please load image of "+file_name)
 
 class Feature_Crawler(BaseCrawler):
-    def __init__(self,start=0,last=0,order_list=None,order_name=None,info=[],di=di,idi=idi,jidi=jidi,firefox=firefox,driver=driver):
+    def __init__(self,start=0,last=0,order_list=None,order_name=None,info=[],movie_only=True,di=di,idi=idi,jidi=jidi,firefox=firefox,driver=driver):
         super().__init__()
         self.idi=idi
         self.jidi=jidi
@@ -60,18 +60,27 @@ class Feature_Crawler(BaseCrawler):
         self.last=last
         self.order_list=order_list
         self.order_name=order_name
-        
+        self.movie_only=movie_only
         
         #欲しい特徴の『名前』1 こちらは『処理』と順を揃える
         self.feature_list=["titleId",'image_exist','j_image_exist','story_line','domestic_money','international_money','full_money']
         #他['domestic_rate','international_rate',"dates","stars","reviews"]
         
-        # 特徴の『名前』2 こちらは順番は任意
-        self.all_feature=['datePublished', 'keywords', 'aggregateRating', 'review','duration','trailer']
-        #他['@context', '@type', 'url', 'name', 'image', 'genre', 'contentRating', 'actor','director','creator', 'description', ]
+        # 特徴の『名前』2 順不同
+        self.all_feature=[  'contentRating',  'description','datePublished', 'keywords']
+        #'name','review',@context', '@type', 'url','image','actor','director','creator','genre','duration'
+        
+        # 特徴の『名前』3 順不同
+        self.detail_feature=['aggregateRating']
+        self.feature_dict={'aggregateRating':['ratingCount','bestRating','worstRating','ratingValue']}
+        #'trailer'
+        
+
         
         
         self.feature_list.extend(self.all_feature)
+        for f in self.detail_feature:
+            self.feature_list.extend(self.feature_dict[f])
         self.load_csv()
         
 
@@ -93,9 +102,9 @@ class Feature_Crawler(BaseCrawler):
         parsed_json = json.loads(json_data.contents[0])
         kind = soup.find("a",href="/search/title?genres=movie&explore=title_type,genres")
 
-        if parsed_json["@type"]=="Movie":
+        if parsed_json["@type"]=="Movie" and self.movie_only:
             
-            #欲しい特徴を得る『処理』(名前と順を揃える)
+            #欲しい特徴を得る『処理』1(名前と順を揃える)
             features=[]
 
             
@@ -109,7 +118,7 @@ class Feature_Crawler(BaseCrawler):
             features.append(img_url)
             
             
-             #jim
+            #日本画像
             try:
                 j_im="exist"
                 self.j_getPoster(soup.find("title").text.split("(")[0],movie_id)
@@ -126,7 +135,7 @@ class Feature_Crawler(BaseCrawler):
             if story_data is None:
                 story=None
             else:
-                story=story_data.getText()
+                story=str(story_data.getText())[6:-2]
             features.append(story)
             
             #money
@@ -137,14 +146,15 @@ class Feature_Crawler(BaseCrawler):
                 percent = box_soup.find_all('span', attrs = {'class':'percent'})
                 money = box_soup.find_all('span', attrs = {'class':'money'})
                 p = [pe.text for pe in percent]
-                m = [mo.text for mo in money]
-                if m[0][1:]==m[1][1:] and (p[0]=='–' or p[1]=='–'):
+                m = [float(mo.text.replace(",","")[1:]) for mo in money]
+                if m[0]==m[1] and (p[0]=='–' or p[1]=='–'):
                     if p[0]=='–':
-                        result = [None,m[0][1:],m[1][1:]]
+                        result = [None,m[0],m[1]]
                     elif p[1]=='–':
-                        result = [m[0][1:],None,m[1][1:]]
+                        result = [m[0],None,m[1]]
                 else:
-                    result = [m[0][1:],m[1][1:],m[2][1:]]
+                    result = [m[0],m[1],m[2]]
+                #money rate
                 #features.extend(p)
                 features.extend(result)
             except Exception as e:
@@ -160,12 +170,21 @@ class Feature_Crawler(BaseCrawler):
                 features.extend([None]*3)
             """
             
-            #その他
+            #『処理』2 順不同
             for name in self.all_feature:
                 try:
                     features.append(parsed_json[name])
                 except Exception as e:
                     features.append(None)
+                    
+            #『処理』3 順不同
+            for name in self.detail_feature:
+                try:
+                    detail=eval(str(parsed_json[name]))
+                    for d_name in self.feature_dict[name]:
+                        features.append(float(detail[d_name]))
+                except Exception as e:
+                    features.extend([None]*len(self.feature_dict[name]))
            
             return features
         else:
@@ -261,7 +280,8 @@ class Feature_Crawler(BaseCrawler):
     @property
     def feature_di(self):
         if self.order_name is None:
-            return self.di+"/"+"_".join(self.feature_list)+"_s"+str(self.start)+"_l"+str(self.last)+".csv"
+            return self.di+"/"+"_s"+str(self.start)+"_l"+str(self.last)+".csv"
+        #"_".join(self.feature_list)+
         else:
             return self.di+"/"+self.order_name+".csv"
     

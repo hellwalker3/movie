@@ -8,6 +8,7 @@ import os
 import requests
 import gzip
 import pandas as pd
+import numpy as np
 
 class Tsv_Crawler(BaseCrawler):
     def __init__(self,last=-1,di="data/Tsv_data"):
@@ -16,6 +17,7 @@ class Tsv_Crawler(BaseCrawler):
         self.file_name=["name.basics.tsv.gz","title.akas.tsv.gz","title.basics.tsv.gz","title.crew.tsv.gz","title.episode.tsv.gz","title.principals.tsv.gz","title.ratings.tsv.gz"]
         self.full_load(last)
         self.title_connect()
+        self.title=self.title.replace(np.nan,'\\N')
     
     def download_Tsv(self,url):      
         filename = url.split("/")[-1]
