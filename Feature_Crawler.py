@@ -7,6 +7,10 @@ import json
 import os
 import requests
 from PIL import Image
+import requests
+import copy
+import torchvision.transforms as transforms
+from torchvision.transforms import ToTensor,Grayscale,ToPILImage
 """
 #時系列review
 from selenium import webdriver
@@ -18,6 +22,27 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 import datetime
 """
+
+def one_to_three(img):
+    if img.shape[0]!=3:
+        transform=transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                Grayscale(num_output_channels=3)
+            ]
+        )
+        return transform(img)
+    else:
+        transform=transforms.ToPILImage()
+        return transform(img)
+
+transform=transforms.Compose(
+                    [
+                        transforms.ToTensor(),
+                        transforms.Lambda(one_to_three),
+                        transforms.Resize([300,256]),
+                        transforms.ToTensor()
+                    ])
 
 #データ保存用ディレクトリ
 di="data/Feature_data"
@@ -44,7 +69,10 @@ def load_image(file_name,option="eng",idi=idi,jidi=jidi):
    
     try:
         im = Image.open(idi+"/"+file_name+".jpg")
-        return im
+        image= transform(im)
+        
+        im.close()
+        return image
     except Exception as e:
         print(e,"please load image of "+file_name)
 
@@ -298,15 +326,19 @@ class Feature_Crawler(BaseCrawler):
             search=self.order_list
             
         for i in search:
-            if self.order_name is None:
-                movie_id=self.movie_num(i)
-            else:
-                movie_id=i
-            feature=self.get_feature(movie_id)
-            id_feature=[movie_id]
-            if feature !=  None:
-                id_feature.extend(feature)
-                pd_list.append(id_feature)
+            try:
+                if self.order_name is None:
+                    movie_id=self.movie_num(i)
+                else:
+                    movie_id=i
+                feature=self.get_feature(movie_id)
+                id_feature=[movie_id]
+                if feature !=  None:
+                    id_feature.extend(feature)
+                    pd_list.append(id_feature)
+            except Exception as e:
+                print(e)
+                continue
         pd_list=pd.DataFrame(pd_list,columns=self.feature_list)
         pd_list.to_csv(self.feature_di)
         
